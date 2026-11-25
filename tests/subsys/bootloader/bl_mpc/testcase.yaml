@@ -1,0 +1,32 @@
+tests:
+  bootloader.bl_mpc.unit:
+    platform_allow:
+      - native_sim/native/64
+    integration_platforms:
+      - native_sim/native/64
+    extra_configs:
+      - CONFIG_TEST_BL_MPC_FAKE=y
+    tags:
+      - bl_mpc
+      - unittest
+      - ci_tests_subsys_bootloader
+
+  bootloader.bl_mpc.hardware:
+    platform_allow:
+      - nrf54lm20dk/nrf54lm20b/cpuapp
+    integration_platforms:
+      - nrf54lm20dk/nrf54lm20b/cpuapp
+    tags:
+      - bl_mpc
+      - ci_tests_subsys_bootloader
+
+  bootloader.bl_mpc.hardware_locked_conflict:
+    platform_allow:
+      - nrf54lm20dk/nrf54lm20b/cpuapp
+    integration_platforms:
+      - nrf54lm20dk/nrf54lm20b/cpuapp
+    extra_configs:
+      - CONFIG_TEST_BL_MPC_LOCKED_CONFLICT=y
+    tags:
+      - bl_mpc
+      - ci_tests_subsys_bootloader
