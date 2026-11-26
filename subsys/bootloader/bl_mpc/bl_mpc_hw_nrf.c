@@ -43,6 +43,12 @@ void bl_mpc_hw_override_config_get(uint8_t index, bool *enabled, bool *locked)
 
 bool bl_mpc_hw_override_matches(uint8_t index, const struct bl_mpc_region *region)
 {
+#if NRF_MPC_HAS_OVERRIDE_OWNERID
+	if (nrf_mpc_override_ownerid_get(MPC_INSTANCE, index) != NRF_OWNER_NONE) {
+		return false;
+	}
+#endif
+
 	return nrf_mpc_override_startaddr_get(MPC_INSTANCE, index) == region->start &&
 	       nrf_mpc_override_endaddr_get(MPC_INSTANCE, index) == region->end &&
 	       nrf_mpc_override_perm_get(MPC_INSTANCE, index) ==
@@ -61,6 +67,9 @@ void bl_mpc_hw_override_write(uint8_t index, const struct bl_mpc_region *region)
 	nrf_mpc_override_endaddr_set(MPC_INSTANCE, index, region->end);
 	nrf_mpc_override_perm_set(MPC_INSTANCE, index, permissions_to_hw(region->permissions));
 	nrf_mpc_override_permmask_set(MPC_INSTANCE, index, HW_PERMMASK_ALL);
+#if NRF_MPC_HAS_OVERRIDE_OWNERID
+	nrf_mpc_override_ownerid_set(MPC_INSTANCE, index, NRF_OWNER_NONE);
+#endif
 	nrf_mpc_override_config_set(MPC_INSTANCE, index, &config);
 }
 

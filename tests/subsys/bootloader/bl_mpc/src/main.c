@@ -70,15 +70,8 @@ ZTEST(bl_mpc, test_invalid_input)
 	zassert_equal(fake_mpc_disable_count_get(), 0U);
 }
 
-ZTEST(bl_mpc, test_program_verify_and_repeat)
+ZTEST(bl_mpc, test_program_and_reject_repeat)
 {
-	struct fake_mpc_override initially_enabled = {
-		.enabled = true,
-	};
-
-	fake_mpc_override_set(0U, &initially_enabled);
-	fake_mpc_override_set(2U, &initially_enabled);
-
 	zassert_ok(bl_mpc_protect_and_lock(regions, ARRAY_SIZE(regions)));
 	zassert_equal(fake_mpc_write_count_get(), ARRAY_SIZE(regions));
 
@@ -100,14 +93,23 @@ ZTEST(bl_mpc, test_program_verify_and_repeat)
 	uint32_t write_count = fake_mpc_write_count_get();
 	uint32_t disable_count = fake_mpc_disable_count_get();
 
-	zassert_ok(bl_mpc_protect_and_lock(regions, ARRAY_SIZE(regions)));
+	zassert_equal(bl_mpc_protect_and_lock(regions, ARRAY_SIZE(regions)), -EACCES);
 	zassert_equal(fake_mpc_write_count_get(), write_count);
 	zassert_equal(fake_mpc_disable_count_get(), disable_count);
 }
 
-ZTEST(bl_mpc, test_locked_conflicts)
+ZTEST(bl_mpc, test_previous_configuration)
 {
 	struct fake_mpc_override state = {
+		.region = regions[0],
+		.enabled = true,
+	};
+
+	fake_mpc_override_set(0U, &state);
+	zassert_equal(bl_mpc_protect_and_lock(regions, ARRAY_SIZE(regions)), -EACCES);
+
+	fake_mpc_reset();
+	state = (struct fake_mpc_override){
 		.region = regions[0],
 		.enabled = false,
 		.locked = true,
@@ -194,7 +196,6 @@ ZTEST(bl_mpc, test_protect_verify_and_fault)
 
 	protected_page[0] = 0U;
 
-	zassert_ok(bl_mpc_protect_and_lock(&region, 1U));
 	zassert_ok(bl_mpc_protect_and_lock(&region, 1U));
 
 	expected_faults++;

@@ -33,8 +33,7 @@ static int validate_requested_regions(const struct bl_mpc_region *regions, size_
 
 	for (size_t i = 0; i < region_count; i++) {
 		if (!is_boundary_aligned(regions[i].start) ||
-		    !is_boundary_aligned(regions[i].end) ||
-		    regions[i].end <= regions[i].start ||
+		    !is_boundary_aligned(regions[i].end) || regions[i].end <= regions[i].start ||
 		    (regions[i].permissions & ~BL_MPC_PERM_ALL) != 0U) {
 			return -EINVAL;
 		}
@@ -43,15 +42,15 @@ static int validate_requested_regions(const struct bl_mpc_region *regions, size_
 	return 0;
 }
 
-/** @brief Check whether any software-configurable override is locked. */
-static bool any_override_locked(void)
+/** @brief Check whether any software-configurable override is enabled or locked. */
+static bool any_override_configured(void)
 {
 	for (uint8_t i = 0U; i <= BL_MPC_REGION_COUNT_MAX; i++) {
 		bool enabled;
 		bool locked;
 
 		bl_mpc_hw_override_config_get(i, &enabled, &locked);
-		if (locked) {
+		if (enabled || locked) {
 			return true;
 		}
 	}
@@ -102,39 +101,15 @@ int bl_mpc_protect_and_lock(const struct bl_mpc_region *regions, size_t region_c
 
 	requested_count = (uint8_t)region_count;
 
-	if (any_override_locked()) {
-		err = verify_target_state(regions, requested_count);
-		return err == 0 ? 0 : -EACCES;
+	if (any_override_configured()) {
+		return -EACCES;
 	}
 
 	for (uint8_t i = 0U; i < requested_count; i++) {
-		bool enabled;
-		bool locked;
-
-		bl_mpc_hw_override_config_get(i, &enabled, &locked);
-
-		/* If the override is unlocked and enabled, disable it, so it can be programmed
-		 * to the requested state.
-		 */
-		if (enabled) {
-			bl_mpc_hw_override_disable(i, false);
-			bl_mpc_hw_data_sync();
-		}
-
 		bl_mpc_hw_override_write(i, &regions[i]);
 	}
 
 	for (uint8_t i = requested_count; i <= BL_MPC_REGION_COUNT_MAX; i++) {
-		bool enabled;
-		bool locked;
-
-		bl_mpc_hw_override_config_get(i, &enabled, &locked);
-
-		if (enabled) {
-			bl_mpc_hw_override_disable(i, false);
-			bl_mpc_hw_data_sync();
-		}
-
 		bl_mpc_hw_override_disable(i, true);
 	}
 

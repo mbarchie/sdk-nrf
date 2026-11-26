@@ -110,17 +110,13 @@ struct bl_mpc_region {
  * All unassigned general-purpose overrides and the access-blocking override are
  * locked disabled.
  *
- * Each region is programmed with PERM.SECATTR = Secure and PERMMASK covering
- * READ, WRITE, EXECUTE and SECATTR.
+ * Each region is programmed with PERM.SECATTR = Secure, PERMMASK covering READ,
+ * WRITE, EXECUTE and SECATTR, and no OWNERID filtering.
  *
  * The function validates its input before modifying MPC00. If any override is
- * already locked, the complete MPC00 state must match the requested target
- * state. Invalid input or a locked state mismatch leaves MPC00 unchanged. A
- * failure while programming or verifying the hardware may leave MPC00 partially
- * configured.
- *
- * The function is idempotent: a second call with the same input returns 0 and
- * performs no writes.
+ * already enabled or locked, the function returns -EACCES without modifying
+ * MPC00. A failure while programming or verifying the hardware may leave MPC00
+ * partially configured.
  *
  * The module does not check overlaps or adjacency between regions. Where regions
  * overlap, hardware combines their READ, WRITE and EXECUTE bits with logical OR,
@@ -148,11 +144,10 @@ struct bl_mpc_region {
  * @param region_count Number of regions, 1 .. BL_MPC_REGION_COUNT_MAX.
  *
  * @retval 0        All software-configurable overrides are in the target state,
- *                  locked and verified, including when they were already configured.
+ *                  locked and verified.
  * @retval -EINVAL  Invalid input. MPC00 is not modified.
  * @retval -ENOSPC  @p region_count exceeds BL_MPC_REGION_COUNT_MAX. MPC00 is not modified.
- * @retval -EACCES  An override is locked in a state that differs from the target
- *                  state. MPC00 is not modified.
+ * @retval -EACCES  An override was already enabled or locked. MPC00 is not modified.
  * @retval -EIO     Read-back mismatch after writing. MPC00 might be partially configured.
  */
 int bl_mpc_protect_and_lock(const struct bl_mpc_region *regions, size_t region_count);
